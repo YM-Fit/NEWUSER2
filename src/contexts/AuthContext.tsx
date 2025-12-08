@@ -87,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       setTrainee(data.trainee);
-      toast.success(`ברוך הבא, ${data.trainee.full_name}!`);
+      toast.success(`ברוך הבא, ${data.trainee.name}!`);
     } catch (error: any) {
       console.error('Login error:', error);
       toast.error(error.message || 'שגיאה בהתחברות');

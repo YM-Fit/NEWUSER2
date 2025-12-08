@@ -12,12 +12,10 @@ export default function Measurements() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({
     weight: '',
-    body_fat_percentage: '',
+    height: '',
+    body_fat: '',
     muscle_mass: '',
-    metabolic_age: '',
-    chest: '',
-    waist: '',
-    hips: '',
+    notes: '',
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -35,7 +33,7 @@ export default function Measurements() {
         .from('measurements')
         .select('*')
         .eq('trainee_id', trainee.id)
-        .order('measurement_date', { ascending: false });
+        .order('date', { ascending: false });
 
       if (error) throw error;
       setMeasurements(data || []);
@@ -57,14 +55,14 @@ export default function Measurements() {
 
       const measurementData: any = {
         trainee_id: trainee.id,
-        measurement_date: today,
+        date: today,
       };
 
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value) {
-          measurementData[key] = parseFloat(value);
-        }
-      });
+      if (formData.weight) measurementData.weight = parseFloat(formData.weight);
+      if (formData.height) measurementData.height = parseFloat(formData.height);
+      if (formData.body_fat) measurementData.body_fat = parseFloat(formData.body_fat);
+      if (formData.muscle_mass) measurementData.muscle_mass = parseFloat(formData.muscle_mass);
+      if (formData.notes) measurementData.notes = formData.notes;
 
       const { error: measurementError } = await supabase
         .from('measurements')
@@ -72,24 +70,14 @@ export default function Measurements() {
 
       if (measurementError) throw measurementError;
 
-      await supabase.from('trainer_notifications').insert({
-        trainer_id: trainee.trainer_id,
-        trainee_id: trainee.id,
-        notification_type: 'new_measurement',
-        title: 'מדידה חדשה',
-        message: `${trainee.full_name} הוסיף/ה מדידה חדשה`,
-      });
-
-      toast.success('המדידה נוספה בהצלחה והמאמן עודכן');
+      toast.success('המדידה נוספה בהצלחה');
       setShowAddForm(false);
       setFormData({
         weight: '',
-        body_fat_percentage: '',
+        height: '',
+        body_fat: '',
         muscle_mass: '',
-        metabolic_age: '',
-        chest: '',
-        waist: '',
-        hips: '',
+        notes: '',
       });
       loadMeasurements();
     } catch (error) {
@@ -165,15 +153,26 @@ export default function Measurements() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                    גובה (ס״מ)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={formData.height}
+                    onChange={(e) => setFormData({ ...formData, height: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     אחוז שומן (%)
                   </label>
                   <input
                     type="number"
                     step="0.1"
-                    value={formData.body_fat_percentage}
-                    onChange={(e) =>
-                      setFormData({ ...formData, body_fat_percentage: e.target.value })
-                    }
+                    value={formData.body_fat}
+                    onChange={(e) => setFormData({ ...formData, body_fat: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -191,54 +190,16 @@ export default function Measurements() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    גיל מטבולי
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.metabolic_age}
-                    onChange={(e) => setFormData({ ...formData, metabolic_age: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    חזה (ס״מ)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.chest}
-                    onChange={(e) => setFormData({ ...formData, chest: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    מותניים (ס״מ)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.waist}
-                    onChange={(e) => setFormData({ ...formData, waist: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ירכיים (ס״מ)
+                    הערות
                   </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.hips}
-                    onChange={(e) => setFormData({ ...formData, hips: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    placeholder="הערות נוספות..."
                   />
                 </div>
               </div>
@@ -275,7 +236,7 @@ export default function Measurements() {
           {measurements.map((measurement, index) => (
             <div key={measurement.id} className="bg-white rounded-xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-900">{formatDate(measurement.measurement_date)}</h3>
+                <h3 className="font-bold text-gray-900">{formatDate(measurement.date)}</h3>
                 {index === 0 && (
                   <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded">
                     אחרון
@@ -283,17 +244,23 @@ export default function Measurements() {
                 )}
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {measurement.weight && (
                   <div className="bg-gray-50 rounded-lg p-3">
                     <p className="text-xs text-gray-600 mb-1">משקל</p>
                     <p className="text-lg font-bold text-gray-900">{measurement.weight} ק״ג</p>
                   </div>
                 )}
-                {measurement.body_fat_percentage && (
+                {measurement.height && (
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <p className="text-xs text-gray-600 mb-1">גובה</p>
+                    <p className="text-lg font-bold text-gray-900">{measurement.height} ס״מ</p>
+                  </div>
+                )}
+                {measurement.body_fat && (
                   <div className="bg-gray-50 rounded-lg p-3">
                     <p className="text-xs text-gray-600 mb-1">אחוז שומן</p>
-                    <p className="text-lg font-bold text-gray-900">{measurement.body_fat_percentage}%</p>
+                    <p className="text-lg font-bold text-gray-900">{measurement.body_fat}%</p>
                   </div>
                 )}
                 {measurement.muscle_mass && (
@@ -302,31 +269,13 @@ export default function Measurements() {
                     <p className="text-lg font-bold text-gray-900">{measurement.muscle_mass} ק״ג</p>
                   </div>
                 )}
-                {measurement.metabolic_age && (
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-600 mb-1">גיל מטבולי</p>
-                    <p className="text-lg font-bold text-gray-900">{measurement.metabolic_age}</p>
-                  </div>
-                )}
-                {measurement.chest && (
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-600 mb-1">חזה</p>
-                    <p className="text-lg font-bold text-gray-900">{measurement.chest} ס״מ</p>
-                  </div>
-                )}
-                {measurement.waist && (
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-600 mb-1">מותניים</p>
-                    <p className="text-lg font-bold text-gray-900">{measurement.waist} ס״מ</p>
-                  </div>
-                )}
-                {measurement.hips && (
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-600 mb-1">ירכיים</p>
-                    <p className="text-lg font-bold text-gray-900">{measurement.hips} ס״מ</p>
-                  </div>
-                )}
               </div>
+              {measurement.notes && (
+                <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-xs text-gray-600 mb-1">הערות</p>
+                  <p className="text-sm text-gray-900">{measurement.notes}</p>
+                </div>
+              )}
             </div>
           ))}
         </div>

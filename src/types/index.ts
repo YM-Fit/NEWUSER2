@@ -1,26 +1,25 @@
 export interface Trainee {
   id: string;
   trainer_id: string;
-  full_name: string;
+  name: string;
   phone: string;
   email?: string;
   birth_date?: string;
   gender?: string;
-  height?: number;
   is_active: boolean;
+  created_at: string;
 }
 
 export interface Measurement {
   id: string;
   trainee_id: string;
-  measurement_date: string;
+  date: string;
   weight?: number;
-  body_fat_percentage?: number;
+  height?: number;
+  body_fat?: number;
   muscle_mass?: number;
-  metabolic_age?: number;
-  chest?: number;
-  waist?: number;
-  hips?: number;
+  notes?: string;
+  created_at: string;
 }
 
 export interface Workout {
@@ -99,22 +98,30 @@ export interface MealPlanItem {
 export interface DailyLog {
   id: string;
   trainee_id: string;
-  log_date: string;
-  water_ml?: number;
-  steps?: number;
+  date: string;
+  weight?: number;
+  workout_completed: boolean;
+  workout_notes?: string;
+  meals_followed: boolean;
+  water_intake?: number;
   sleep_hours?: number;
-  sleep_quality?: number;
-  mood?: string;
+  energy_level?: number;
   notes?: string;
+  created_at: string;
 }
 
 export interface Meal {
   id: string;
+  meal_plan_id?: string;
   trainee_id: string;
-  meal_date: string;
-  meal_type: string;
-  meal_time?: string;
-  description: string;
+  name: string;
+  time_of_day?: string;
+  description?: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fats?: number;
+  created_at: string;
 }
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';

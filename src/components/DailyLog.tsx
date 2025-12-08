@@ -1,36 +1,22 @@
 import { useEffect, useState } from 'react';
-import { BookOpen, Droplet, Footprints, Moon, Smile } from 'lucide-react';
+import { BookOpen, Droplet, Moon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { DailyLog as DailyLogType } from '../types';
 import toast from 'react-hot-toast';
-
-const MOOD_OPTIONS = [
-  { value: 'excellent', label: 'מצוין', emoji: '😄' },
-  { value: 'good', label: 'טוב', emoji: '🙂' },
-  { value: 'ok', label: 'בסדר', emoji: '😐' },
-  { value: 'bad', label: 'לא טוב', emoji: '😕' },
-  { value: 'terrible', label: 'גרוע', emoji: '😢' },
-];
-
-const SLEEP_QUALITY_OPTIONS = [
-  { value: 5, label: 'מעולה' },
-  { value: 4, label: 'טוב' },
-  { value: 3, label: 'בינוני' },
-  { value: 2, label: 'גרוע' },
-  { value: 1, label: 'מאוד גרוע' },
-];
 
 export default function DailyLog() {
   const { trainee } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
-    water_ml: '',
-    steps: '',
+    weight: '',
+    workout_completed: false,
+    workout_notes: '',
+    meals_followed: false,
+    water_intake: '',
     sleep_hours: '',
-    sleep_quality: '',
-    mood: '',
+    energy_level: '',
     notes: '',
   });
 
@@ -50,18 +36,20 @@ export default function DailyLog() {
         .from('daily_log')
         .select('*')
         .eq('trainee_id', trainee.id)
-        .eq('log_date', today)
+        .eq('date', today)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
 
       if (data) {
         setFormData({
-          water_ml: data.water_ml?.toString() || '',
-          steps: data.steps?.toString() || '',
+          weight: data.weight?.toString() || '',
+          workout_completed: data.workout_completed || false,
+          workout_notes: data.workout_notes || '',
+          meals_followed: data.meals_followed || false,
+          water_intake: data.water_intake?.toString() || '',
           sleep_hours: data.sleep_hours?.toString() || '',
-          sleep_quality: data.sleep_quality?.toString() || '',
-          mood: data.mood || '',
+          energy_level: data.energy_level?.toString() || '',
           notes: data.notes || '',
         });
       }
@@ -84,19 +72,21 @@ export default function DailyLog() {
         .from('daily_log')
         .select('id')
         .eq('trainee_id', trainee.id)
-        .eq('log_date', today)
+        .eq('date', today)
         .maybeSingle();
 
       const logData: any = {
         trainee_id: trainee.id,
-        log_date: today,
+        date: today,
+        workout_completed: formData.workout_completed,
+        meals_followed: formData.meals_followed,
       };
 
-      if (formData.water_ml) logData.water_ml = parseInt(formData.water_ml);
-      if (formData.steps) logData.steps = parseInt(formData.steps);
+      if (formData.weight) logData.weight = parseFloat(formData.weight);
+      if (formData.workout_notes) logData.workout_notes = formData.workout_notes;
+      if (formData.water_intake) logData.water_intake = parseInt(formData.water_intake);
       if (formData.sleep_hours) logData.sleep_hours = parseFloat(formData.sleep_hours);
-      if (formData.sleep_quality) logData.sleep_quality = parseInt(formData.sleep_quality);
-      if (formData.mood) logData.mood = formData.mood;
+      if (formData.energy_level) logData.energy_level = parseInt(formData.energy_level);
       if (formData.notes) logData.notes = formData.notes;
 
       if (existing) {
@@ -149,36 +139,70 @@ export default function DailyLog() {
 
       <div className="bg-white rounded-xl p-6 shadow-sm space-y-6">
         <div>
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            משקל היום (ק״ג)
+          </label>
+          <input
+            type="number"
+            step="0.1"
+            value={formData.weight}
+            onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="לדוגמה: 75.5"
+          />
+        </div>
+
+        <div className="space-y-3">
+          <label className="flex items-center gap-3 p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+            <input
+              type="checkbox"
+              checked={formData.workout_completed}
+              onChange={(e) => setFormData({ ...formData, workout_completed: e.target.checked })}
+              className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+            />
+            <span className="text-sm font-medium text-gray-700">השלמתי את האימון היום</span>
+          </label>
+
+          {formData.workout_completed && (
+            <textarea
+              value={formData.workout_notes}
+              onChange={(e) => setFormData({ ...formData, workout_notes: e.target.value })}
+              rows={3}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              placeholder="איך היה האימון? הערות..."
+            />
+          )}
+        </div>
+
+        <div>
+          <label className="flex items-center gap-3 p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+            <input
+              type="checkbox"
+              checked={formData.meals_followed}
+              onChange={(e) => setFormData({ ...formData, meals_followed: e.target.checked })}
+              className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+            />
+            <span className="text-sm font-medium text-gray-700">עקבתי אחרי תוכנית התזונה</span>
+          </label>
+        </div>
+
+        <div>
           <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
             <Droplet className="w-5 h-5 text-blue-600" />
-            כמות מים (מ״ל)
+            כמות מים (כוסות)
           </label>
           <input
             type="number"
-            value={formData.water_ml}
-            onChange={(e) => setFormData({ ...formData, water_ml: e.target.value })}
+            value={formData.water_intake}
+            onChange={(e) => setFormData({ ...formData, water_intake: e.target.value })}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="לדוגמה: 2000"
+            placeholder="לדוגמה: 8"
           />
         </div>
 
         <div>
           <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
-            <Footprints className="w-5 h-5 text-green-600" />
-            צעדים
-          </label>
-          <input
-            type="number"
-            value={formData.steps}
-            onChange={(e) => setFormData({ ...formData, steps: e.target.value })}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="לדוגמה: 10000"
-          />
-        </div>
-
-        <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
-            <Moon className="w-5 h-5 text-purple-600" />
+            <Moon className="w-5 h-5 text-indigo-600" />
             שעות שינה
           </label>
           <input
@@ -192,51 +216,28 @@ export default function DailyLog() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">איכות שינה</label>
+          <label className="block text-sm font-medium text-gray-700 mb-3">רמת אנרגיה</label>
           <div className="flex gap-2">
-            {SLEEP_QUALITY_OPTIONS.map((option) => (
+            {[1, 2, 3, 4, 5].map((level) => (
               <button
-                key={option.value}
+                key={level}
                 type="button"
-                onClick={() => setFormData({ ...formData, sleep_quality: option.value.toString() })}
+                onClick={() => setFormData({ ...formData, energy_level: level.toString() })}
                 className={`flex-1 py-3 px-2 rounded-lg border-2 transition-all ${
-                  formData.sleep_quality === option.value.toString()
+                  formData.energy_level === level.toString()
                     ? 'border-blue-600 bg-blue-50 text-blue-700 font-semibold'
                     : 'border-gray-200 text-gray-700 hover:border-gray-300'
                 }`}
               >
-                {option.label}
+                {level}
               </button>
             ))}
           </div>
+          <p className="text-xs text-gray-500 mt-2">1 = נמוך מאוד, 5 = גבוה מאוד</p>
         </div>
 
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
-            <Smile className="w-5 h-5 text-yellow-600" />
-            מצב רוח
-          </label>
-          <div className="grid grid-cols-5 gap-2">
-            {MOOD_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setFormData({ ...formData, mood: option.value })}
-                className={`py-3 px-2 rounded-lg border-2 transition-all ${
-                  formData.mood === option.value
-                    ? 'border-blue-600 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="text-2xl mb-1">{option.emoji}</div>
-                <div className="text-xs font-medium text-gray-700">{option.label}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">הערות</label>
+          <label className="block text-sm font-medium text-gray-700 mb-3">הערות כלליות</label>
           <textarea
             value={formData.notes}
             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
