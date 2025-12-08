@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,14 +34,14 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { data: trainee, error: traineeError } = await supabaseAdmin
-      .from("trainees")
+    const { data: traineeAuth, error: authError } = await supabaseAdmin
+      .from("trainee_auth")
       .select("*")
       .eq("phone", phone)
       .eq("is_active", true)
       .single();
 
-    if (traineeError || !trainee) {
+    if (authError || !traineeAuth) {
       return new Response(
         JSON.stringify({ error: "מספר טלפון או סיסמה שגויים" }),
         {
@@ -50,11 +51,27 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-    
-    if (authError) {
+    const passwordMatch = await bcrypt.compare(password, traineeAuth.password_hash);
+
+    if (!passwordMatch) {
       return new Response(
-        JSON.stringify({ error: "שגיאה באימות" }),
+        JSON.stringify({ error: "מספר טלפון או סיסמה שגויים" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const { data: trainee, error: traineeError } = await supabaseAdmin
+      .from("trainees")
+      .select("*")
+      .eq("id", traineeAuth.trainee_id)
+      .single();
+
+    if (traineeError || !trainee) {
+      return new Response(
+        JSON.stringify({ error: "שגיאה בטעינת פרטי מתאמן" }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -62,36 +79,27 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const user = authUser.users.find(u => u.phone === phone);
-    
-    if (!user) {
-      return new Response(
-        JSON.stringify({ error: "משתמש לא נמצא" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
+    await supabaseAdmin
+      .from("trainee_auth")
+      .update({ last_login: new Date().toISOString() })
+      .eq("id", traineeAuth.id);
 
-    const { data: session, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
-      phone: phone,
-      password: password,
-    });
-
-    if (signInError) {
-      return new Response(
-        JSON.stringify({ error: "מספר טלפון או סיסמה שגויים" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
+    const token = btoa(JSON.stringify({
+      trainee_id: trainee.id,
+      phone: trainee.phone,
+      exp: Date.now() + (24 * 60 * 60 * 1000)
+    }));
 
     return new Response(
       JSON.stringify({
-        session: session.session,
+        session: {
+          access_token: token,
+          refresh_token: token,
+          user: {
+            id: trainee.id,
+            phone: trainee.phone,
+          }
+        },
         trainee: trainee,
       }),
       {
@@ -99,6 +107,7 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
+    console.error('Login error:', error);
     return new Response(
       JSON.stringify({ error: error.message || "שגיאה בהתחברות" }),
       {
