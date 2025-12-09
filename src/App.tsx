@@ -12,7 +12,7 @@ import Meals from './components/Meals';
 import MealPlanView from './components/MealPlanView';
 
 function AppContent() {
-  const { session, loading } = useAuth();
+  const { traineeId, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
 
   if (loading) {
@@ -23,7 +23,7 @@ function AppContent() {
     );
   }
 
-  if (!session) {
+  if (!traineeId) {
     return <Login />;
   }
 

@@ -1,62 +1,54 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { Session } from '@supabase/supabase-js';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
-import { Trainee } from '../types';
 import toast from 'react-hot-toast';
 
+interface Trainee {
+  id: string;
+  full_name: string;
+  phone: string;
+  email: string;
+  trainer_id: string;
+}
+
 interface AuthContextType {
-  session: Session | null;
   trainee: Trainee | null;
+  traineeId: string | null;
   loading: boolean;
   login: (phone: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
   const [trainee, setTrainee] = useState<Trainee | null>(null);
+  const [traineeId, setTraineeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-        loadTrainee(session.user.phone || '');
-      } else {
-        setLoading(false);
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      (async () => {
-        setSession(session);
-        if (session) {
-          await loadTrainee(session.user.phone || '');
-        } else {
-          setTrainee(null);
-        }
-      })();
-    });
-
-    return () => subscription.unsubscribe();
+    const storedTraineeId = localStorage.getItem('trainee_id');
+    if (storedTraineeId) {
+      loadTrainee(storedTraineeId);
+    } else {
+      setLoading(false);
+    }
   }, []);
 
-  const loadTrainee = async (phone: string) => {
+  const loadTrainee = async (id: string) => {
     try {
       const { data, error } = await supabase
         .from('trainees')
         .select('*')
-        .eq('phone', phone)
-        .eq('is_active', true)
+        .eq('id', id)
         .single();
 
       if (error) throw error;
+
       setTrainee(data);
+      setTraineeId(id);
     } catch (error) {
       console.error('Error loading trainee:', error);
-      toast.error('שגיאה בטעינת פרטי המשתמש');
+      localStorage.removeItem('trainee_id');
     } finally {
       setLoading(false);
     }
@@ -70,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({ phone, password }),
         }
@@ -81,13 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(data.error || 'שגיאה בהתחברות');
       }
 
-      await supabase.auth.setSession({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
-      });
+      localStorage.setItem('trainee_id', data.trainee_id);
 
       setTrainee(data.trainee);
-      toast.success(`ברוך הבא, ${data.trainee.name}!`);
+      setTraineeId(data.trainee_id);
+
+      toast.success('התחברת בהצלחה!');
     } catch (error: any) {
       console.error('Login error:', error);
       toast.error(error.message || 'שגיאה בהתחברות');
@@ -95,19 +87,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = async () => {
-    try {
-      await supabase.auth.signOut();
-      setTrainee(null);
-      toast.success('התנתקת בהצלחה');
-    } catch (error) {
-      console.error('Logout error:', error);
-      toast.error('שגיאה בהתנתקות');
-    }
+  const logout = () => {
+    localStorage.removeItem('trainee_id');
+    setTrainee(null);
+    setTraineeId(null);
+    toast.success('התנתקת בהצלחה');
   };
 
   return (
-    <AuthContext.Provider value={{ session, trainee, loading, login, logout }}>
+    <AuthContext.Provider value={{ trainee, traineeId, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -115,8 +103,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
 }

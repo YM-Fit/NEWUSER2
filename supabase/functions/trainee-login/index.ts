@@ -84,22 +84,9 @@ Deno.serve(async (req: Request) => {
       .update({ last_login: new Date().toISOString() })
       .eq("id", traineeAuth.id);
 
-    const token = btoa(JSON.stringify({
-      trainee_id: trainee.id,
-      phone: trainee.phone,
-      exp: Date.now() + (24 * 60 * 60 * 1000)
-    }));
-
     return new Response(
       JSON.stringify({
-        session: {
-          access_token: token,
-          refresh_token: token,
-          user: {
-            id: trainee.id,
-            phone: trainee.phone,
-          }
-        },
+        trainee_id: trainee.id,
         trainee: trainee,
       }),
       {
