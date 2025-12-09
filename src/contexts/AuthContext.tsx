@@ -56,26 +56,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (phone: string, password: string) => {
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/trainee-login`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({ phone, password }),
-        }
-      );
+      const { data, error } = await supabase.rpc('verify_trainee_login', {
+        p_phone: phone,
+        p_password: password
+      });
 
-      const data = await response.json();
+      if (error) throw error;
 
-      if (!response.ok) {
-        throw new Error(data.error || 'שגיאה בהתחברות');
+      if (!data.success) {
+        throw new Error(data.error);
       }
 
       localStorage.setItem('trainee_id', data.trainee_id);
-
       setTrainee(data.trainee);
       setTraineeId(data.trainee_id);
 
