@@ -56,9 +56,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (phone: string, password: string) => {
     try {
-      const { data, error } = await supabase.rpc('verify_trainee_login', {
-        p_phone: phone,
-        p_password: password
+      const { data, error } = await supabase.rpc('trainee_login', {
+        phone_input: phone,
+        password_input: password
       });
 
       if (error) throw error;
